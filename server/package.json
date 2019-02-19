@@ -1,0 +1,15 @@
+{
+  "name": "proprietaryengine",
+  "version": "1.0.0",
+  "description": "so good it might as well be proprietary",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Hampton Moore",
+  "license": "MIT",
+  "dependencies": {
+    "what-the-pack": "^1.1.7",
+    "ws": "^6.1.4"
+  }
+}
