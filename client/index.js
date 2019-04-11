@@ -3,8 +3,72 @@ c.width = document.body.clientWidth;
 c.height = document.body.clientHeight;
 let ctx = c.getContext("2d");
 let debug;
-let conn = new WebSocket("wss://proprietaryengine-herohamp.c9users.io:8082/");
+let conn = new WebSocket("wss://getsquaredv3-herohamp.c9users.io:8082/");
 conn.binaryType = "arraybuffer";
+
+conn.onopen = function(event) {
+
+    document.body.addEventListener("keydown", function(e) {
+        handleKey(e.keyCode, true)
+    });
+
+    document.body.addEventListener("keyup", function(e) {
+        handleKey(e.keyCode, false)
+    });
+
+    document.onkeypress = function(e) {
+        e = e || window.event;
+        // use e.keyCode
+
+        let keys = [32]
+
+        if (keys.indexOf(e.keyCode) != -1) {
+            conn.send(new Int16Array([201, e.keyCode]));
+        }
+
+
+    };
+
+    game.lastPing = Date.now()
+    conn.send(new Int16Array([1]))
+
+    setInterval(function() {
+        game.lastPing = Date.now();
+        conn.send(new Int16Array([1]));
+    }, 2500)
+
+    setInterval(function() {
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        var playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
+        var playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
+
+        document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
+
+        ctx.lineWidth = 2.5;
+        ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
+
+        for (var i in game.clients) {
+            game.clients[i].updatePhysics();
+            game.clients[i].render(playerX, playerY);
+
+            if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
+                var bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)]
+                ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
+                ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
+
+            }
+
+            if (game.clients[i].markers[0].render) {
+                game.clients[i].markers[0].draw(playerX, playerY)
+            }
+            if (game.clients[i].markers[1].render) {
+                game.clients[i].markers[1].draw(playerX, playerY)
+            }
+        }
+    }, 1000 / 60)
+
+};
 
 let game = {
     myID: null,
@@ -12,11 +76,32 @@ let game = {
     speed: null,
     friction: null,
     width: null,
-    height: null
+    height: null,
+    markerTime: 20,
+    ping: 0,
+    lastPing: 0
 }
 
+class marker {
+    constructor(x, y, ownerid) {
+        this.x = x;
+        this.y = y;
+        this.ownerid = ownerid;
+        this.render = false;
+        this.width = 25;
+        this.height = 25;
+    }
+
+    draw(playerX, playerY) {
+        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
+        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
+    }
+
+}
+
+
 class player {
-    constructor(id, x, y, xm, ym, color, me) {
+    constructor(id, x, y, xm, ym, color, points) {
         this.x = x;
         this.y = y;
         this.xm = 0;
@@ -29,6 +114,8 @@ class player {
         this.friction = game.friction;
         this.keys = [];
         this.me = id == game.myID;
+        this.markers = [];
+        this.points = points;
     }
 
     render(playerX, playerY) {
@@ -42,8 +129,8 @@ class player {
 
         }
         else {
-            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 30).fill();
-            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 30).stroke();
+            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
+            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
         }
     }
 
@@ -73,7 +160,7 @@ class player {
         this.x = clamp(this.x, 0, game.width);
         this.y = clamp(this.y, 0, game.height);
 
-        if (this.me) {
+        if (true) {
             this.ym *= this.friction;
             this.xm *= this.friction;
         }
@@ -83,7 +170,7 @@ class player {
                 continue;
             }
 
-            this.colCheck(game.clients[i]);
+            //this.colCheck(game.clients[i]);
         }
 
         //console.log(this.x, this.y, this.xm, this.ym)
@@ -156,6 +243,10 @@ conn.onmessage = function(e) {
     //console.log(data)
 
     switch (data[0]) {
+        case 1:
+            game.ping = Date.now() - game.lastPing
+            document.getElementById('ping').innerHTML = game.ping
+            break;
         case 100:
             game.myID = data[1]
             game.speed = data[2] / 100;
@@ -166,7 +257,9 @@ conn.onmessage = function(e) {
 
         case 101:
             for (var i = 1; i < data.length; i += 8) {
-                game.clients[data[i]] = new player(data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4], rgbToHex(data[i + 5], data[i + 6], data[i + 7]));
+                game.clients[data[i]] = new player(data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4], rgbToHex(data[i + 5], data[i + 6], data[i + 7]), data[i + 8]);
+                game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
+                game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
             }
             break;
 
@@ -183,44 +276,42 @@ conn.onmessage = function(e) {
             delete game.clients[data[1]];
             break;
 
+        case 105:
+            for (var i = 1; i < data.length; i += 7) {
+                //id, render, x, y, render2, x2, y2
+                game.clients[data[i]].markers[0].render = data[i + 1];
+                game.clients[data[i]].markers[0].x = data[i + 2];
+                game.clients[data[i]].markers[0].y = data[i + 3];
+
+                game.clients[data[i]].markers[1].render = data[i + 4];
+                game.clients[data[i]].markers[1].x = data[i + 5];
+                game.clients[data[i]].markers[1].y = data[i + 6];
+            }
+            break;
+
+        case 106:
+            console.log(data[1], data[2]);
+            break;
+
     }
 }
 
-setInterval(function() {
-    conn.send(new Int16Array([1]));
-}, 10000)
 
-setInterval(function() {
-    ctx.clearRect(0, 0, c.width, c.height);
-
-    var playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
-    var playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
-
-    document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
-
-    ctx.lineWidth = 2.5;
-    ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
-
-    for (var i in game.clients) {
-        game.clients[i].updatePhysics();
-        game.clients[i].render(playerX, playerY);
-    }
-}, 1000 / 60)
 
 function handleKey(keyCode, state) {
-    let keys = [87, 68, 65, 83]
+    let keys = [87, 68, 65, 83];
 
     if (keys.indexOf(keyCode) != -1) {
         conn.send(new Int16Array([200, keyCode, state]));
     }
 
-    game.clients[game.myID].keys[keyCode] = state;
+    if (game.ping < 100) {
+        game.clients[game.myID].keys[keyCode] = state;
+    }
+    else {
+        setTimeout(function() {
+                game.clients[game.myID].keys[keyCode] = state;
+            },
+            game.ping);
+    }
 }
-
-document.body.addEventListener("keydown", function(e) {
-    handleKey(e.keyCode, true)
-});
-
-document.body.addEventListener("keyup", function(e) {
-    handleKey(e.keyCode, false)
-});

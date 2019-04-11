@@ -6,10 +6,22 @@ const wss = new WebSocket.Server({
 
 let id = 0;
 
+let sockets = [];
+
 let game = {
     clients: [],
-    width: 1000,
-    height: 1000
+    width: 2000,
+    height: 2000
+}
+
+class marker {
+    constructor(x, y, ownerid) {
+        this.x = x;
+        this.y = y;
+        this.ownerid = ownerid;
+        this.spawnTime = Math.floor(new Date().getTime() / 1000);
+    }
+
 }
 
 class player {
@@ -23,12 +35,14 @@ class player {
         this.id = id;
         this.color = hexToRgb(color);
         this.keys = [];
-        this.speed = 0.15;
+        this.speed = 0.2;
         this.friction = 0.95;
+        this.markers = [];
+        this.points = 0;
     }
 
     initTransportify() {
-        let transport = [this.id, Math.floor(this.x), Math.floor(this.y), this.xm, this.ym, this.color.r, this.color.g, this.color.b];
+        let transport = [this.id, Math.floor(this.x), Math.floor(this.y), this.xm, this.ym, this.color.r, this.color.g, this.color.b, this.points];
         return transport;
     }
 
@@ -40,6 +54,32 @@ class player {
             var transport = [];
         }
         return transport;
+    }
+
+    transportMarker() {
+        let transport = [this.id];
+        for (var i in this.markers) {
+            transport.push(1, this.markers[i].x, this.markers[i].y);
+        }
+        if (transport.length == 1) {
+            transport.push(0, 0, 0);
+        }
+        if (transport.length == 4) {
+            transport.push(0, 0, 0);
+        }
+
+        return transport;
+
+    }
+
+    spawnMarker() {
+        if (this.markers.length < 2) {
+            this.markers.push(new marker(this.x, this.y, this.id));
+        }
+        else {
+            this.markers.shift();
+            this.markers.push(new marker(this.x, this.y, this.id));
+        }
     }
 
     colCheck(shapeA) {
@@ -80,7 +120,7 @@ class player {
         return colDir;
     }
 
-    updatePhysics() {
+    updatePhysics(ws) {
         if (this.keys[87]) {
             this.ym -= this.speed;
         }
@@ -103,13 +143,38 @@ class player {
         this.x = clamp(this.x, 0, game.width);
         this.y = clamp(this.y, 0, game.height);
 
-        for (var i in game.clients) {
-            if (game.clients[i] == this) {
-                continue;
-            }
+        var boxCol = false;
 
-            this.colCheck(game.clients[i]);
+        if (this.markers[0] && this.markers[1]) {
+            boxCol = true;
         }
+
+        if (boxCol) {
+            for (var i in game.clients) {
+                if (game.clients[i] == this) {
+                    continue;
+                }
+                var bounds = [Math.min(this.markers[0].x, this.markers[1].x), Math.min(this.markers[0].y, this.markers[1].y)]
+                var col = game.clients[i].colCheck({ x: bounds[0], y: bounds[1], width: Math.max(this.markers[0].x, this.markers[1].x) - bounds[0], height: Math.max(this.markers[0].y, this.markers[1].y) - bounds[1] });
+
+                if (col) {
+                    game.clients[i].x = randomB(0, game.width);
+                    game.clients[i].y = randomB(0, game.height);
+                    game.clients[i].points = 0;
+                    game.clients[i].markers.length = 0;
+                    this.points++;
+
+                    wss.broadcast(new Int16Array([106, this.id, this.points]));
+                }
+            }
+        }
+        if (this.markers[0]) {
+            if (Math.floor(new Date().getTime() / 1000) - this.markers[0].spawnTime > 10) {
+                this.markers.shift();
+            }
+        }
+
+
     }
 }
 
@@ -140,7 +205,8 @@ wss.broadcast = function broadcast(data) {
 
 wss.on('connection', (ws) => {
     let cid = id++;
-    let client = new player(cid, game.width / 2, game.height / 2, Math.floor(Math.random() * 16777215).toString(16));
+    let client = new player(cid, randomB(0, game.width), randomB(0, game.height), Math.floor(Math.random() * 16777215).toString(16));
+    sockets[cid] = ws;
 
     game.clients[cid] = client;
 
@@ -160,10 +226,20 @@ wss.on('connection', (ws) => {
 
     ws.on('message', function incoming(message) {
         let data = new Int16Array(message);
-
+        //console.log(data);
         switch (data[0]) {
+            case 1:
+                ws.send(new Int16Array([1]));
+                break;
             case 200:
                 game.clients[cid].keys[data[2]] = data[4];
+                break;
+            case 201:
+                switch (data[2]) {
+                    case 32:
+                        client.spawnMarker()
+                        break;
+                }
                 break;
         }
 
@@ -171,6 +247,7 @@ wss.on('connection', (ws) => {
 
     ws.on('close', function close() {
         delete game.clients[cid];
+        delete sockets[cid];
         //console.log("Deleted ", cid)
         wss.broadcast(new Int16Array([104, cid]));
     });
@@ -185,8 +262,13 @@ setInterval(function() {
 
 setInterval(function() {
     var players = [102];
+
+    var markers = [105]
+
     for (var i in game.clients) {
         players = players.concat(game.clients[i].quickTransportify());
+        markers = markers.concat(game.clients[i].transportMarker());
     }
     wss.broadcast(new Int16Array(players));
-}, 1000 / 30)
+    wss.broadcast(new Int16Array(markers));
+}, 1000 / 15)

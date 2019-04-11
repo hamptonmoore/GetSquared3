@@ -19,7 +19,8 @@ ID 101 - Init all users
 
 ID 102 - update user data
 
-[id, x, y, xm, ym] - this repeats for all users
+[id, spawned, x, y, spawned, xm, ym] - this repeats for all users
+    spawned is a boolean for whether it is active
     ym is multiplied by 100
     xm is multiplied by 100
     
@@ -28,8 +29,21 @@ ID 104 - delete user
 
 [id]
 
+ID 105 - update marker
+
+[id, x1, y1, x2, y2]
+
+ID 106 - set points
+
+[id, points]
+
 --- Client Messages ---
 
-ID 200 - Key Press
+ID 200 - Key Down/Up
 
 [keyid, status]
+
+ID 201 - Key Press
+
+[keyid]
+
