@@ -7,12 +7,28 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
         }
 
-        #app {
+        #ping {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #scoreboard {
             position: absolute;
             top: 20px;
             left: 20px;
+        }
+
+        th {
+            border-bottom: 5px solid black;
+        }
+
+        td,
+        th {
+            text-align: center;
         }
 
         #canvas {
@@ -21,12 +37,23 @@
         }
     </style>
     <title>GetSquared</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 </head>
 
 <body>
     <canvas id="canvas" width="500" height="500" style="border:1px solid #000000;"></canvas>
     <div id="app">
-        <span>Ping Time: <span id="ping">Unknown</span></span>
+        <span id="ping">Ping Time: <span>{{ ping }}</span></span>
+        <table id="scoreboard">
+            <tr>
+                <th>Username</th>
+                <th>Points</th>
+            </tr>
+            <tr v-for="player in scoreboard">
+                <td>{{ player[0] }}</td>
+                <td>{{ player[1] }}</td>
+            </tr>
+        </table>
     </div>
     <script type="text/javascript" src="./index.js"></script>
 </body>

@@ -10,20 +10,21 @@ ID 1 - Ping and Pongs between server and client
 ID 100 - Hello User
 
 [userID, speed, friction, width, height]
-    speed is multiplied by 100
-    friction is multiplied by 100
+    - speed is multiplied by 100
+    - friction is multiplied by 100
 
 ID 101 - Init all users
 
-[id, x, y, xm, y, colorr, colorg, colorb] - this repeats for all users in a single array
+[id, x, y, xm, y, colorr, colorg, colorb, points, nameID1, nameID2] - this repeats for all users in a single array
+    - ym is multiplied by 100
+    - xm is multiplied by 100
 
 ID 102 - update user data
 
-[id, spawned, x, y, spawned, xm, ym] - this repeats for all users
-    spawned is a boolean for whether it is active
-    ym is multiplied by 100
-    xm is multiplied by 100
-    
+[id, x, y, xm, ym] 
+    - this repeats for all users
+    - ym is multiplied by 100
+    - xm is multiplied by 100
 
 ID 104 - delete user
 

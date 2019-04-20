@@ -45,6 +45,8 @@ conn.onopen = function(event) {
 
         document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
 
+
+
         ctx.lineWidth = 2.5;
         ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
 
@@ -101,7 +103,7 @@ class marker {
 
 
 class player {
-    constructor(id, x, y, xm, ym, color, points) {
+    constructor(id, x, y, xm, ym, r, g, b, points, u1, u2) {
         this.x = x;
         this.y = y;
         this.xm = 0;
@@ -109,26 +111,33 @@ class player {
         this.height = 50;
         this.width = 50;
         this.id = id;
-        this.color = color;
+        this.color = rgbToHex(r, g, b);
         this.speed = game.speed;
         this.friction = game.friction;
         this.keys = [];
         this.me = id == game.myID;
         this.markers = [];
         this.points = points;
+        this.username = nameList[u1] + nameList[u2];
     }
 
     render(playerX, playerY) {
 
         ctx.fillStyle = this.color;
         ctx.lineWidth = 5;
+        ctx.textAlign = "center";
+        ctx.font = "20px Menlo, Monaco, Consolas, Courier New, monospace";
 
         if (this.me) {
+            ctx.fillText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10);
+            //ctx.strokeText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10)
             ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).fill();
             ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).stroke();
 
         }
         else {
+            ctx.fillText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
+            //ctx.strokeText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
             ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
             ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
         }
@@ -169,72 +178,10 @@ class player {
             if (game.clients[i] == this) {
                 continue;
             }
-
-            //this.colCheck(game.clients[i]);
         }
 
         //console.log(this.x, this.y, this.xm, this.ym)
     }
-
-    colCheck(shapeA) {
-        // get the vectors to check against
-        var vX = (shapeA.x + (shapeA.width / 2)) - (this.x + (this.width / 2)),
-            vY = (shapeA.y + (shapeA.height / 2)) - (this.y + (this.height / 2)),
-            // add the half widths and half heights of the objects
-            hWidths = (shapeA.width / 2) + (this.width / 2),
-            hHeights = (shapeA.height / 2) + (this.height / 2),
-            colDir = null;
-
-        // if the x and y vector are less than the half width or half height, they we must be inside the object, causing a collision
-        if (Math.abs(vX) < hWidths && Math.abs(vY) < hHeights) {
-            // figures out on which side we are colliding (top, bottom, left, or right)
-            var oX = hWidths - Math.abs(vX),
-                oY = hHeights - Math.abs(vY);
-            if (oX >= oY) {
-                if (vY > 0) {
-                    colDir = "t";
-                    shapeA.y += oY;
-                }
-                else {
-                    colDir = "b";
-                    shapeA.y -= oY;
-                }
-            }
-            else {
-                if (vX > 0) {
-                    colDir = "l";
-                    shapeA.x += oX;
-                }
-                else {
-                    colDir = "r";
-                    shapeA.x -= oX;
-                }
-            }
-        }
-        return colDir;
-    }
-
-}
-
-function rgbToHex(r, g, b) {
-    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-}
-
-function clamp(val, min, max) {
-    return val > max ? max : val < min ? min : val;
-}
-
-CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-    if (w < 2 * r) r = w / 2;
-    if (h < 2 * r) r = h / 2;
-    this.beginPath();
-    this.moveTo(x + r, y);
-    this.arcTo(x + w, y, x + w, y + h, r);
-    this.arcTo(x + w, y + h, x, y + h, r);
-    this.arcTo(x, y + h, x, y, r);
-    this.arcTo(x, y, x + w, y, r);
-    this.closePath();
-    return this;
 }
 
 conn.onmessage = function(e) {
@@ -245,7 +192,8 @@ conn.onmessage = function(e) {
     switch (data[0]) {
         case 1:
             game.ping = Date.now() - game.lastPing
-            document.getElementById('ping').innerHTML = game.ping
+            app._data.ping = game.ping
+            createScoreboard();
             break;
         case 100:
             game.myID = data[1]
@@ -256,11 +204,12 @@ conn.onmessage = function(e) {
             break;
 
         case 101:
-            for (var i = 1; i < data.length; i += 8) {
-                game.clients[data[i]] = new player(data[i], data[i + 1], data[i + 2], data[i + 3], data[i + 4], rgbToHex(data[i + 5], data[i + 6], data[i + 7]), data[i + 8]);
+            for (var i = 1; i < data.length; i += 11) {
+                game.clients[data[i]] = new player(data[i], data[i + 1], data[i + 2], data[i + 3] / 100, data[i + 4] / 100, data[i + 5], data[i + 6], data[i + 7], data[i + 8], data[i + 9], data[i + 10]);
                 game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
                 game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
             }
+            createScoreboard();
             break;
 
         case 102:
@@ -272,9 +221,11 @@ conn.onmessage = function(e) {
             }
             break;
 
-        case 104:
             delete game.clients[data[1]];
             break;
+
+        case 104:
+            delete game.clients[data[1]];
 
         case 105:
             for (var i = 1; i < data.length; i += 7) {
@@ -290,13 +241,47 @@ conn.onmessage = function(e) {
             break;
 
         case 106:
-            console.log(data[1], data[2]);
+            game.clients[data[1]].points = data[2]
+            createScoreboard();
             break;
 
     }
 }
 
+CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+}
 
+function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+function clamp(val, min, max) {
+    return val > max ? max : val < min ? min : val;
+}
+
+function createScoreboard() {
+    let scoreboard = [];
+
+    for (let i in game.clients) {
+        scoreboard.push([game.clients[i].username, game.clients[i].points]);
+    }
+
+    scoreboard.sort((a, b) => (a[1] > b[1]) ? -1 : 1)
+
+    scoreboard = scoreboard.slice(0, 5);
+
+    app._data.scoreboard = scoreboard;
+}
 
 function handleKey(keyCode, state) {
     let keys = [87, 68, 65, 83];
@@ -315,3 +300,39 @@ function handleKey(keyCode, state) {
             game.ping);
     }
 }
+
+let app = new Vue({
+    el: '#app',
+    data: {
+        ping: null,
+        scoreboard: [
+
+        ]
+    }
+})
+
+
+// nameList taken from https://codepen.io/jamesrbdev/pen/WxyKyr
+var nameList = [
+    'Time', 'Past', 'Future', 'Dev',
+    'Fly', 'Flying', 'Soar', 'Soaring', 'Power', 'Falling',
+    'Fall', 'Jump', 'Cliff', 'Mountain', 'Rend', 'Red', 'Blue',
+    'Green', 'Yellow', 'Gold', 'Demon', 'Demonic', 'Panda', 'Cat',
+    'Kitty', 'Kitten', 'Zero', 'Memory', 'Trooper', 'XX', 'Bandit',
+    'Fear', 'Light', 'Glow', 'Tread', 'Deep', 'Deeper', 'Deepest',
+    'Mine', 'Your', 'Worst', 'Enemy', 'Hostile', 'Force', 'Video',
+    'Game', 'Donkey', 'Mule', 'Colt', 'Cult', 'Cultist', 'Magnum',
+    'Gun', 'Assault', 'Recon', 'Trap', 'Trapper', 'Redeem', 'Code',
+    'Script', 'Writer', 'Near', 'Close', 'Open', 'Cube', 'Circle',
+    'Geo', 'Genome', 'Germ', 'Spaz', 'Shot', 'Echo', 'Beta', 'Alpha',
+    'Gamma', 'Omega', 'Seal', 'Squid', 'Money', 'Cash', 'Lord', 'King',
+    'Duke', 'Rest', 'Fire', 'Flame', 'Morrow', 'Break', 'Breaker', 'Numb',
+    'Ice', 'Cold', 'Rotten', 'Sick', 'Sickly', 'Janitor', 'Camel', 'Rooster',
+    'Sand', 'Desert', 'Dessert', 'Hurdle', 'Racer', 'Eraser', 'Erase', 'Big',
+    'Small', 'Short', 'Tall', 'Sith', 'Bounty', 'Hunter', 'Cracked', 'Broken',
+    'Sad', 'Happy', 'Joy', 'Joyful', 'Crimson', 'Destiny', 'Deceit', 'Lies',
+    'Lie', 'Honest', 'Destined', 'Bloxxer', 'Hawk', 'Eagle', 'Hawker', 'Walker',
+    'Zombie', 'Sarge', 'Capt', 'Captain', 'Punch', 'One', 'Two', 'Uno', 'Slice',
+    'Slash', 'Melt', 'Melted', 'Melting', 'Fell', 'Wolf', 'Hound',
+    'Legacy', 'Sharp', 'Dead', 'Mew', 'Chuckle', 'Bubba', 'Bubble', 'Sandwich', 'Smasher', 'Extreme', 'Multi', 'Universe', 'Ultimate', 'Death', 'Ready', 'Monkey', 'Elevator', 'Wrench', 'Grease', 'Head', 'Theme', 'Grand', 'Cool', 'Kid', 'Boy', 'Girl', 'Vortex', 'Paradox'
+];

@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const botAi = require('./bot.js');
 
 const wss = new WebSocket.Server({
     port: 8082
@@ -10,8 +11,8 @@ let sockets = [];
 
 let game = {
     clients: [],
-    width: 2000,
-    height: 2000
+    width: 3000,
+    height: 3000
 }
 
 class marker {
@@ -25,7 +26,7 @@ class marker {
 }
 
 class player {
-    constructor(id, x, y, color) {
+    constructor(id, x, y, color, type) {
         this.x = x;
         this.y = y;
         this.xm = 0;
@@ -33,16 +34,18 @@ class player {
         this.height = 50;
         this.width = 50;
         this.id = id;
-        this.color = hexToRgb(color);
+        this.color = color;
         this.keys = [];
         this.speed = 0.2;
         this.friction = 0.95;
         this.markers = [];
+        this.username = [randomInt(0, 174), randomInt(0, 174)]
         this.points = 0;
+        this.type = type;
     }
 
     initTransportify() {
-        let transport = [this.id, Math.floor(this.x), Math.floor(this.y), this.xm, this.ym, this.color.r, this.color.g, this.color.b, this.points];
+        let transport = [this.id, Math.floor(this.x), Math.floor(this.y), Math.round(this.xm * 100), Math.round(this.ym * 100), this.color.r, this.color.g, this.color.b, this.points, this.username[0], this.username[1]];
         return transport;
     }
 
@@ -73,51 +76,22 @@ class player {
     }
 
     spawnMarker() {
-        if (this.markers.length < 2) {
-            this.markers.push(new marker(this.x, this.y, this.id));
-        }
-        else {
+        if (this.markers.length > 1) {
             this.markers.shift();
-            this.markers.push(new marker(this.x, this.y, this.id));
         }
+        this.markers.push(new marker(this.x + this.width / 2, this.y + this.width / 2, this.id));
     }
 
     colCheck(shapeA) {
-        // get the vectors to check against
-        var vX = (shapeA.x + (shapeA.width / 2)) - (this.x + (this.width / 2)),
-            vY = (shapeA.y + (shapeA.height / 2)) - (this.y + (this.height / 2)),
-            // add the half widths and half heights of the objects
-            hWidths = (shapeA.width / 2) + (this.width / 2),
-            hHeights = (shapeA.height / 2) + (this.height / 2),
-            colDir = null;
-
-        // if the x and y vector are less than the half width or half height, they we must be inside the object, causing a collision
-        if (Math.abs(vX) < hWidths && Math.abs(vY) < hHeights) {
-            // figures out on which side we are colliding (top, bottom, left, or right)
-            var oX = hWidths - Math.abs(vX),
-                oY = hHeights - Math.abs(vY);
-            if (oX >= oY) {
-                if (vY > 0) {
-                    colDir = "t";
-                    shapeA.y += oY;
-                }
-                else {
-                    colDir = "b";
-                    shapeA.y -= oY;
-                }
-            }
-            else {
-                if (vX > 0) {
-                    colDir = "l";
-                    shapeA.x += oX;
-                }
-                else {
-                    colDir = "r";
-                    shapeA.x -= oX;
-                }
-            }
+        if (shapeA.x < this.x + this.width &&
+            shapeA.x + shapeA.width > this.x &&
+            shapeA.y < this.y + this.height &&
+            shapeA.height + shapeA.y > this.y) {
+            return true;
         }
-        return colDir;
+        else {
+            return false;
+        }
     }
 
     updatePhysics(ws) {
@@ -158,10 +132,7 @@ class player {
                 var col = game.clients[i].colCheck({ x: bounds[0], y: bounds[1], width: Math.max(this.markers[0].x, this.markers[1].x) - bounds[0], height: Math.max(this.markers[0].y, this.markers[1].y) - bounds[1] });
 
                 if (col) {
-                    game.clients[i].x = randomB(0, game.width);
-                    game.clients[i].y = randomB(0, game.height);
-                    game.clients[i].points = 0;
-                    game.clients[i].markers.length = 0;
+                    game.clients[i].kill();
                     this.points++;
 
                     wss.broadcast(new Int16Array([106, this.id, this.points]));
@@ -174,24 +145,22 @@ class player {
             }
         }
 
-
     }
-}
 
-function hexToRgb(hex) {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    };
+    kill() {
+        this.x = randomInt(0, game.width);
+        this.y = randomInt(0, game.height);
+        this.points = 0;
+        this.markers.length = 0;
+        wss.broadcast(new Int16Array([106, this.id, this.points]));
+    }
 }
 
 function clamp(val, min, max) {
     return val > max ? max : val < min ? min : val;
 }
 
-function randomB(min, max) {
+function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
@@ -205,7 +174,7 @@ wss.broadcast = function broadcast(data) {
 
 wss.on('connection', (ws) => {
     let cid = id++;
-    let client = new player(cid, randomB(0, game.width), randomB(0, game.height), Math.floor(Math.random() * 16777215).toString(16));
+    let client = new player(cid, randomInt(0, game.width), randomInt(0, game.height), { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "player");
     sockets[cid] = ws;
 
     game.clients[cid] = client;
@@ -215,18 +184,21 @@ wss.on('connection', (ws) => {
         players = players.concat(game.clients[i].initTransportify());
     }
 
+    // Tell player about world
     ws.send(new Int16Array([100, cid, client.speed * 100, client.friction * 100, game.width, game.height]));
+    // Tell player about other players
     ws.send(new Int16Array(players));
 
+    // Send new player to other clients
     wss.clients.forEach(function each(socket) {
         if (socket !== ws && socket.readyState === WebSocket.OPEN) {
             socket.send(new Int16Array([101].concat(client.initTransportify())));
         }
     });
 
+    // Websocket from client
     ws.on('message', function incoming(message) {
         let data = new Int16Array(message);
-        //console.log(data);
         switch (data[0]) {
             case 1:
                 ws.send(new Int16Array([1]));
@@ -255,20 +227,36 @@ wss.on('connection', (ws) => {
 });
 
 setInterval(function() {
-    for (var i in game.clients) {
+    // Run the bots AI
+    for (let i in game.clients) {
+        if (game.clients[i].type == "bot") {
+            botAi.run(game, i);
+        }
+
         game.clients[i].updatePhysics();
     }
 }, 1000 / 60)
 
+// Send out updates to players
 setInterval(function() {
     var players = [102];
 
     var markers = [105]
 
-    for (var i in game.clients) {
+    // Package data
+    for (let i in game.clients) {
         players = players.concat(game.clients[i].quickTransportify());
         markers = markers.concat(game.clients[i].transportMarker());
     }
     wss.broadcast(new Int16Array(players));
     wss.broadcast(new Int16Array(markers));
 }, 1000 / 15)
+
+
+// Setup bots
+let botCount = 20;
+
+for (let i = 0; i < botCount; i++) {
+    let bid = id++;
+    game.clients.push(new player(bid, randomInt(0, game.width), randomInt(0, game.height), { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "bot"))
+}
