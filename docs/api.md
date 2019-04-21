@@ -21,7 +21,7 @@ ID 101 - Init all users
 
 ID 102 - update user data
 
-[id, x, y, xm, ym] 
+[id, x, y, xm, ym, render] 
     - this repeats for all users
     - ym is multiplied by 100
     - xm is multiplied by 100
@@ -48,3 +48,4 @@ ID 201 - Key Press
 
 [keyid]
 
+ID 202 - Start

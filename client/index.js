@@ -88,11 +88,16 @@ class player {
         this.keys = [];
         this.me = id == game.myID;
         this.markers = [];
+        this.show = true;
         this.points = points;
         this.username = nameList[u1] + nameList[u2];
     }
 
     render(playerX, playerY) {
+
+        if (!this.show) {
+            return;
+        }
 
         ctx.fillStyle = this.color;
         ctx.lineWidth = 5;
@@ -175,15 +180,13 @@ conn.onmessage = function(e) {
             break;
 
         case 102:
-            for (let i = 1; i < data.length; i += 5) {
+            for (let i = 1; i < data.length; i += 6) {
                 game.clients[data[i]].x = data[i + 1];
                 game.clients[data[i]].y = data[i + 2];
                 game.clients[data[i]].xm = (data[i + 3]) / 100;
                 game.clients[data[i]].ym = (data[i + 4]) / 100;
+                game.clients[data[i]].show = data[i + 5];
             }
-            break;
-
-            delete game.clients[data[1]];
             break;
 
         case 104:
@@ -330,4 +333,10 @@ function drawGame() {
             game.clients[i].markers[1].draw(playerX, playerY)
         }
     }
+}
+
+document.getElementById("start").onclick = function() {
+    conn.send(new Int16Array([202]));
+    document.getElementById("login").style.display = "none";
+    document.getElementById("scoreboard").style.display = "block";
 }

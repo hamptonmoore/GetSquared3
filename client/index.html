@@ -35,16 +35,43 @@
             background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAo0lEQVRoQ+2SwQ2AMBSF7IIdtgtqenEAEowavD/ih4611nn84Bv7kDnn+PIt+4YOeVPBirypxv6XilREMtDTksRibEWwOmlYEUksxlYEq5OGFZHEYmxFsDppWBFJLMZWBKuThhWRxGJsRbA6aVgRSSzGVgSrk4YVkcRibEWwOmlYEUksxlYEq5OGFZHEYmxFsDppWBFJLMZWBKuThncRif8o9gKrg1pc8UNbKgAAAABJRU5ErkJggg==");
             background-repeat: repeat;
         }
+
+        #login {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            /* bring your own prefixes */
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        #login>h1 {
+            font-size: 5em;
+        }
+
+        #start {
+            background-color: #0098DA;
+            width: 100%;
+            max-width: 300px;
+            height: 100px;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 24px;
+        }
     </style>
     <title>GetSquared</title>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 </head>
 
 <body>
-    <canvas id="canvas" width="500" height="500" style="border:1px solid #000000;"></canvas>
+    <canvas id="canvas" style="border:1px solid #000000;"></canvas>
     <div id="app">
         <span id="ping">Ping Time: <span>{{ ping }}</span></span>
-        <table id="scoreboard">
+        <table id="scoreboard" style="display: none">
             <tr>
                 <th>Username</th>
                 <th>Points</th>
@@ -54,6 +81,11 @@
                 <td>{{ player[1] }}</td>
             </tr>
         </table>
+    </div>
+    <div id="login">
+        <h1>Get Squared</h1>
+        <br>
+        <button id="start">Start</button>
     </div>
     <script type="text/javascript" src="./index.js"></script>
 </body>

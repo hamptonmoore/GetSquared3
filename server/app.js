@@ -52,7 +52,7 @@ class player {
 
     quickTransportify() {
         try {
-            var transport = [this.id, Math.floor(this.x), Math.floor(this.y), Math.round(this.xm * 100), Math.round(this.ym * 100)];
+            var transport = [this.id, Math.floor(this.x), Math.floor(this.y), Math.round(this.xm * 100), Math.round(this.ym * 100), (this.type == "demo") ? 0 : 1];
         }
         catch (err) {
             var transport = [];
@@ -77,6 +77,10 @@ class player {
     }
 
     spawnMarker() {
+        if (this.type == "demo") {
+            return;
+        }
+
         if (this.markers.length > 1) {
             this.markers.shift();
         }
@@ -136,7 +140,7 @@ class player {
         // If the player has placed two markers
         if (boxCol) {
             for (var i in game.clients) {
-                if (game.clients[i] == this) {
+                if (game.clients[i] == this || game.clients[i].type == "demo") {
                     continue;
                 }
 
@@ -192,7 +196,7 @@ wss.on('connection', (ws) => {
 
 
     let cid = id++;
-    let client = new player(cid, randomInt(0, game.width), randomInt(0, game.height), { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "player");
+    let client = new player(cid, game.width / 2, game.height / 2, { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "demo");
     sockets[cid] = ws;
 
     game.clients[cid] = client;
@@ -231,6 +235,11 @@ wss.on('connection', (ws) => {
                         break;
                 }
                 break;
+            case 202:
+                if (client.type == "demo") {
+                    client.type = "player";
+                    client.kill();
+                }
         }
 
     });
