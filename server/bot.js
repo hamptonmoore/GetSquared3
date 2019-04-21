@@ -2,28 +2,25 @@ module.exports = {};
 
 module.exports.run = function(game, id) {
     let me = game.clients[id];
+    // All bot data is held in me.bot
+    let target = me.bot.target;
 
-    // Select the player to move to
-
-    // Store distance, and closest player object
-    let closest = [Number.MAX_VALUE, undefined]
-
-    for (let i in game.clients) {
-        if (game.clients[i] != me) {
-            let dist = Math.hypot(game.clients[i].x - me.x, game.clients[i].y - me.y);
-
-            if (dist < closest[0]) {
-                closest = [dist, game.clients[i]];
-            }
-        }
+    if (target == undefined) {
+        target = module.exports.selectRandomTarget(game, id, me);
+    }
+    else if (game.clients[target] == undefined) {
+        target = module.exports.selectRandomTarget(game, id, me);
+    }
+    if (Math.random() < 0.0005) {
+        target = module.exports.selectRandomTarget(game, id, me);
     }
 
-    //console.log("Closest = " + closest[1].id);
-    if (closest[1] == undefined) {
-        return {};
+    if (target == undefined) {
+        return;
     }
 
-    let other = closest[1];
+    me.bot.target = target;
+    let other = game.clients[target];
 
     let keys = {
         "87": false,
@@ -32,14 +29,12 @@ module.exports.run = function(game, id) {
         "68": false
     }
 
-    let place = false;
-
     // We will calculate the X and the Y direction of the closest player
     let relativePos = [me.x - other.x, me.y - other.y];
 
 
     // Lets base tolerence on the name, so that each bot has a different tolerence
-    let tolerence = (me.username[0] + me.username[1] % 150);
+    let tolerence = (me.username[0] + me.username[1] % 250) * (4);
 
     // The logic for the code below is if its further than tolerence go towards, but if to close go away.
 
@@ -75,12 +70,44 @@ module.exports.run = function(game, id) {
         keys["87"] = true;
     }
 
+    // Randomly place a marker
     if (Math.random() < 0.01) {
         me.spawnMarker();
     }
 
-
     for (let a in keys) {
         me.keys[a] = keys[a];
     }
+}
+
+
+module.exports.selectClosestTarget = function(game, id, me) {
+
+    // Store distance, and closest player object
+    let closest = [Number.MAX_VALUE, undefined]
+
+    for (let i in game.clients) {
+        if (game.clients[i] != me) {
+            let dist = Math.hypot(game.clients[i].x - me.x, game.clients[i].y - me.y);
+
+            if (dist < closest[0]) {
+                closest = [dist, i];
+            }
+        }
+    }
+
+    return closest[1];
+}
+
+
+module.exports.selectRandomTarget = function(game, id, me) {
+    // Turn all keys in clients object into an array to randomly grab from
+    let possible = Object.keys(game.clients);
+
+    // Remove self from client list
+    possible.splice(possible.indexOf(id), 1);
+
+    let selected = possible[Math.floor(Math.random() * possible.length)];
+
+    return selected;
 }

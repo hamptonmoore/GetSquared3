@@ -5,14 +5,15 @@ const wss = new WebSocket.Server({
     port: 8082
 });
 
+// The ID for the next user
 let id = 0;
 
 let sockets = [];
 
 let game = {
     clients: [],
-    width: 3000,
-    height: 3000
+    width: 2500,
+    height: 2500
 }
 
 class marker {
@@ -95,25 +96,34 @@ class player {
     }
 
     updatePhysics(ws) {
+        // Up
         if (this.keys[87]) {
             this.ym -= this.speed;
         }
+
+        // Down
         if (this.keys[83]) {
             this.ym += this.speed;
         }
 
+        // Left
         if (this.keys[65]) {
             this.xm -= this.speed;
         }
+
+        // Right
         if (this.keys[68]) {
             this.xm += this.speed;
         }
 
+
+        // Physics Engine
         this.x += this.xm;
         this.xm *= this.friction;
         this.y += this.ym;
         this.ym *= this.friction;
 
+        // Keep inside of world grid
         this.x = clamp(this.x, 0, game.width);
         this.y = clamp(this.y, 0, game.height);
 
@@ -123,14 +133,18 @@ class player {
             boxCol = true;
         }
 
+        // If the player has placed two markers
         if (boxCol) {
             for (var i in game.clients) {
                 if (game.clients[i] == this) {
                     continue;
                 }
+
+                // Setup boundaries for the collision detection
                 var bounds = [Math.min(this.markers[0].x, this.markers[1].x), Math.min(this.markers[0].y, this.markers[1].y)]
                 var col = game.clients[i].colCheck({ x: bounds[0], y: bounds[1], width: Math.max(this.markers[0].x, this.markers[1].x) - bounds[0], height: Math.max(this.markers[0].y, this.markers[1].y) - bounds[1] });
 
+                // If it collided, kill the player and give a point
                 if (col) {
                     game.clients[i].kill();
                     this.points++;
@@ -156,6 +170,7 @@ class player {
     }
 }
 
+// Clamp function by dweeves - https://stackoverflow.com/a/11410079
 function clamp(val, min, max) {
     return val > max ? max : val < min ? min : val;
 }
@@ -172,7 +187,10 @@ wss.broadcast = function broadcast(data) {
     });
 };
 
+// This is run when a player connects
 wss.on('connection', (ws) => {
+
+
     let cid = id++;
     let client = new player(cid, randomInt(0, game.width), randomInt(0, game.height), { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "player");
     sockets[cid] = ws;
@@ -259,4 +277,5 @@ let botCount = 20;
 for (let i = 0; i < botCount; i++) {
     let bid = id++;
     game.clients.push(new player(bid, randomInt(0, game.width), randomInt(0, game.height), { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "bot"))
+    game.clients[bid].bot = {};
 }

@@ -32,43 +32,14 @@ conn.onopen = function(event) {
     game.lastPing = Date.now()
     conn.send(new Int16Array([1]))
 
+    // Send ping to server
     setInterval(function() {
         game.lastPing = Date.now();
         conn.send(new Int16Array([1]));
     }, 2500)
 
-    setInterval(function() {
-        ctx.clearRect(0, 0, c.width, c.height);
-
-        var playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
-        var playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
-
-        document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
-
-
-
-        ctx.lineWidth = 2.5;
-        ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
-
-        for (var i in game.clients) {
-            game.clients[i].updatePhysics();
-            game.clients[i].render(playerX, playerY);
-
-            if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
-                var bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)]
-                ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
-                ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
-
-            }
-
-            if (game.clients[i].markers[0].render) {
-                game.clients[i].markers[0].draw(playerX, playerY)
-            }
-            if (game.clients[i].markers[1].render) {
-                game.clients[i].markers[1].draw(playerX, playerY)
-            }
-        }
-    }, 1000 / 60)
+    // Render the game every 1/60th of a second
+    setInterval(drawGame, 1000 / 60)
 
 };
 
@@ -163,31 +134,22 @@ class player {
 
         }
 
+        // Interpolate movement to provide fluid movement
         this.y += this.ym;
         this.x += this.xm;
 
         this.x = clamp(this.x, 0, game.width);
         this.y = clamp(this.y, 0, game.height);
 
-        if (true) {
-            this.ym *= this.friction;
-            this.xm *= this.friction;
-        }
+        this.ym *= this.friction;
+        this.xm *= this.friction;
 
-        for (var i in game.clients) {
-            if (game.clients[i] == this) {
-                continue;
-            }
-        }
-
-        //console.log(this.x, this.y, this.xm, this.ym)
     }
 }
 
+// Data sent from server, all according to api.md
 conn.onmessage = function(e) {
     let data = new Int16Array(e.data);
-
-    //console.log(data)
 
     switch (data[0]) {
         case 1:
@@ -204,7 +166,7 @@ conn.onmessage = function(e) {
             break;
 
         case 101:
-            for (var i = 1; i < data.length; i += 11) {
+            for (let i = 1; i < data.length; i += 11) {
                 game.clients[data[i]] = new player(data[i], data[i + 1], data[i + 2], data[i + 3] / 100, data[i + 4] / 100, data[i + 5], data[i + 6], data[i + 7], data[i + 8], data[i + 9], data[i + 10]);
                 game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
                 game.clients[data[i]].markers.push(new marker(data[i], 0, 0));
@@ -213,7 +175,7 @@ conn.onmessage = function(e) {
             break;
 
         case 102:
-            for (var i = 1; i < data.length; i += 5) {
+            for (let i = 1; i < data.length; i += 5) {
                 game.clients[data[i]].x = data[i + 1];
                 game.clients[data[i]].y = data[i + 2];
                 game.clients[data[i]].xm = (data[i + 3]) / 100;
@@ -228,7 +190,7 @@ conn.onmessage = function(e) {
             delete game.clients[data[1]];
 
         case 105:
-            for (var i = 1; i < data.length; i += 7) {
+            for (let i = 1; i < data.length; i += 7) {
                 //id, render, x, y, render2, x2, y2
                 game.clients[data[i]].markers[0].render = data[i + 1];
                 game.clients[data[i]].markers[0].x = data[i + 2];
@@ -313,7 +275,7 @@ let app = new Vue({
 
 
 // nameList taken from https://codepen.io/jamesrbdev/pen/WxyKyr
-var nameList = [
+let nameList = [
     'Time', 'Past', 'Future', 'Dev',
     'Fly', 'Flying', 'Soar', 'Soaring', 'Power', 'Falling',
     'Fall', 'Jump', 'Cliff', 'Mountain', 'Rend', 'Red', 'Blue',
@@ -336,3 +298,36 @@ var nameList = [
     'Slash', 'Melt', 'Melted', 'Melting', 'Fell', 'Wolf', 'Hound',
     'Legacy', 'Sharp', 'Dead', 'Mew', 'Chuckle', 'Bubba', 'Bubble', 'Sandwich', 'Smasher', 'Extreme', 'Multi', 'Universe', 'Ultimate', 'Death', 'Ready', 'Monkey', 'Elevator', 'Wrench', 'Grease', 'Head', 'Theme', 'Grand', 'Cool', 'Kid', 'Boy', 'Girl', 'Vortex', 'Paradox'
 ];
+
+function drawGame() {
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    let playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
+    let playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
+
+    document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
+
+
+
+    ctx.lineWidth = 2.5;
+    ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
+
+    for (let i in game.clients) {
+        game.clients[i].updatePhysics();
+        game.clients[i].render(playerX, playerY);
+
+        if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
+            let bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)]
+            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
+            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
+
+        }
+
+        if (game.clients[i].markers[0].render) {
+            game.clients[i].markers[0].draw(playerX, playerY)
+        }
+        if (game.clients[i].markers[1].render) {
+            game.clients[i].markers[1].draw(playerX, playerY)
+        }
+    }
+}

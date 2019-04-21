@@ -1,4 +1,4 @@
-All messages are Int16Array
+This file details communication between the server and client. All communication are done using Int16Array arrays.
 
 --- PING ---
 
