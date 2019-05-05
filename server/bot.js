@@ -34,7 +34,7 @@ module.exports.run = function(game, id) {
 
 
     // Lets base tolerence on the name, so that each bot has a different tolerence
-    let tolerence = (me.username[0] + me.username[1] % 250) * (4);
+    let tolerence = (me.username[0] + me.username[1] % 250) * (2);
 
     // The logic for the code below is if its further than tolerence go towards, but if to close go away.
 
@@ -79,26 +79,6 @@ module.exports.run = function(game, id) {
         me.keys[a] = keys[a];
     }
 }
-
-
-module.exports.selectClosestTarget = function(game, id, me) {
-
-    // Store distance, and closest player object
-    let closest = [Number.MAX_VALUE, undefined]
-
-    for (let i in game.clients) {
-        if (game.clients[i] != me) {
-            let dist = Math.hypot(game.clients[i].x - me.x, game.clients[i].y - me.y);
-
-            if (dist < closest[0]) {
-                closest = [dist, i];
-            }
-        }
-    }
-
-    return closest[1];
-}
-
 
 module.exports.selectRandomTarget = function(game, id, me) {
     // Turn all keys in clients object into an array to randomly grab from

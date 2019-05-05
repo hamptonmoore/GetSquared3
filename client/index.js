@@ -3,7 +3,7 @@ c.width = document.body.clientWidth;
 c.height = document.body.clientHeight;
 let ctx = c.getContext("2d");
 let debug;
-let conn = new WebSocket("wss://getsquaredv3-herohamp.c9users.io:8082/");
+let conn = new WebSocket("ws://"+window.location.hostname+":8082/");
 conn.binaryType = "arraybuffer";
 
 conn.onopen = function(event) {
@@ -310,8 +310,6 @@ function drawGame() {
 
     document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
 
-
-
     ctx.lineWidth = 2.5;
     ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
 
@@ -320,10 +318,9 @@ function drawGame() {
         game.clients[i].render(playerX, playerY);
 
         if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
-            let bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)]
+            let bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)];
             ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
             ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
-
         }
 
         if (game.clients[i].markers[0].render) {

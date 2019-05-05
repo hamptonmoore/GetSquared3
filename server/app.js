@@ -194,7 +194,6 @@ wss.broadcast = function broadcast(data) {
 // This is run when a player connects
 wss.on('connection', (ws) => {
 
-
     let cid = id++;
     let client = new player(cid, game.width / 2, game.height / 2, { r: randomInt(0, 255), g: randomInt(0, 255), b: randomInt(0, 255) }, "demo");
     sockets[cid] = ws;
@@ -272,16 +271,24 @@ setInterval(function() {
 
     // Package data
     for (let i in game.clients) {
-        players = players.concat(game.clients[i].quickTransportify());
-        markers = markers.concat(game.clients[i].transportMarker());
+        // We dont want to send the location of demos to other clients
+        if (game.clients[i].type == "demo") {
+            sockets[i].send(new Int16Array([102].concat(game.clients[i].quickTransportify())));
+        }
+        else {
+            players = players.concat(game.clients[i].quickTransportify());
+            markers = markers.concat(game.clients[i].transportMarker());
+        }
+
     }
+
     wss.broadcast(new Int16Array(players));
     wss.broadcast(new Int16Array(markers));
 }, 1000 / 15)
 
 
 // Setup bots
-let botCount = 20;
+let botCount = 15;
 
 for (let i = 0; i < botCount; i++) {
     let bid = id++;
