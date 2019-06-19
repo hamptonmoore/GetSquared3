@@ -1,17 +1,16 @@
 module.exports = {};
 
-module.exports.run = function(game, id) {
+module.exports.run = function (game, id) {
     let me = game.clients[id];
     // All bot data is held in me.bot
     let target = me.bot.target;
 
     if (target == undefined) {
         target = module.exports.selectRandomTarget(game, id, me);
-    }
-    else if (game.clients[target] == undefined) {
+    } else if (game.clients[target] == undefined) {
         target = module.exports.selectRandomTarget(game, id, me);
     }
-    if (Math.random() < 0.0005) {
+    if (Math.random() < 0.001) {
         target = module.exports.selectRandomTarget(game, id, me);
     }
 
@@ -41,32 +40,28 @@ module.exports.run = function(game, id) {
     // Left
     if (relativePos[0] > tolerence) {
         keys["65"] = true;
-    }
-    else if (relativePos[0] > 0) {
+    } else if (relativePos[0] > 0) {
         keys["68"] = true;
     }
 
     // Right
     if (relativePos[0] < -tolerence) {
         keys["68"] = true;
-    }
-    else if (relativePos[0] < 0) {
+    } else if (relativePos[0] < 0) {
         keys["65"] = true;
     }
 
     // Up
     if (relativePos[1] > tolerence) {
         keys["87"] = true;
-    }
-    else if (relativePos[1] > 0) {
+    } else if (relativePos[1] > 0) {
         keys["83"] = true;
     }
 
     // Down
     if (relativePos[1] < -tolerence) {
         keys["83"] = true;
-    }
-    else if (relativePos[1] < 0) {
+    } else if (relativePos[1] < 0) {
         keys["87"] = true;
     }
 
@@ -80,7 +75,7 @@ module.exports.run = function(game, id) {
     }
 }
 
-module.exports.selectRandomTarget = function(game, id, me) {
+module.exports.selectRandomTarget = function (game, id, me) {
     // Turn all keys in clients object into an array to randomly grab from
     let possible = Object.keys(game.clients);
 
