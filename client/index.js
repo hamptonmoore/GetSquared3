@@ -1,22 +1,56 @@
+/* SETUP VARIABLES */
+
 let c = document.getElementById("canvas");
 c.width = document.body.clientWidth;
 c.height = document.body.clientHeight;
 let ctx = c.getContext("2d");
 let debug;
-let conn = new WebSocket("ws://"+window.location.hostname+":8082/");
+let running = false;
+let scoreboardElm = document.getElementById("scoreboard");
+let game = {
+    myID: null,
+    clients: [],
+    speed: null,
+    friction: null,
+    width: null,
+    height: null,
+    markerTime: 20,
+    ping: 0,
+    lastPing: 0
+}
+
+/* Start Screen */
+
+if (new URLSearchParams(window.location.search).get("server")) {
+    document.getElementById("serverSelect").value = new URLSearchParams(window.location.search).get("server");
+}
+
+document.getElementById("serverSelect").onchange = function () {
+    document.location = "?server=" + document.getElementById("serverSelect").value;
+};
+
+document.getElementById("start").onclick = function () {
+    conn.send(new Int16Array([202]));
+    document.getElementById("login").style.display = "none";
+    document.getElementById("scoreboard").style.display = "block";
+}
+
+/* Setup Socket */
+
+let conn = new WebSocket(new URLSearchParams(window.location.search).get("server") || "wss://getsquared.voyager1.hampton.pw/");
 conn.binaryType = "arraybuffer";
 
-conn.onopen = function(event) {
+conn.onopen = function (event) {
 
-    document.body.addEventListener("keydown", function(e) {
+    document.body.addEventListener("keydown", function (e) {
         handleKey(e.keyCode, true)
     });
 
-    document.body.addEventListener("keyup", function(e) {
+    document.body.addEventListener("keyup", function (e) {
         handleKey(e.keyCode, false)
     });
 
-    document.onkeypress = function(e) {
+    document.onkeypress = function (e) {
         e = e || window.event;
         // use e.keyCode
 
@@ -33,133 +67,23 @@ conn.onopen = function(event) {
     conn.send(new Int16Array([1]))
 
     // Send ping to server
-    setInterval(function() {
+    setInterval(function () {
         game.lastPing = Date.now();
         conn.send(new Int16Array([1]));
     }, 2500)
 
     // Render the game every 1/60th of a second
-    setInterval(drawGame, 1000 / 60)
-
+    setInterval(gameTick, 1000 / 60);
 };
 
-let game = {
-    myID: null,
-    clients: [],
-    speed: null,
-    friction: null,
-    width: null,
-    height: null,
-    markerTime: 20,
-    ping: 0,
-    lastPing: 0
-}
-
-class marker {
-    constructor(x, y, ownerid) {
-        this.x = x;
-        this.y = y;
-        this.ownerid = ownerid;
-        this.render = false;
-        this.width = 25;
-        this.height = 25;
-    }
-
-    draw(playerX, playerY) {
-        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
-        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
-    }
-
-}
-
-
-class player {
-    constructor(id, x, y, xm, ym, r, g, b, points, u1, u2) {
-        this.x = x;
-        this.y = y;
-        this.xm = 0;
-        this.ym = 0;
-        this.height = 50;
-        this.width = 50;
-        this.id = id;
-        this.color = rgbToHex(r, g, b);
-        this.speed = game.speed;
-        this.friction = game.friction;
-        this.keys = [];
-        this.me = id == game.myID;
-        this.markers = [];
-        this.show = true;
-        this.points = points;
-        this.username = nameList[u1] + nameList[u2];
-    }
-
-    render(playerX, playerY) {
-
-        if (!this.show) {
-            return;
-        }
-
-        ctx.fillStyle = this.color;
-        ctx.lineWidth = 5;
-        ctx.textAlign = "center";
-        ctx.font = "20px Menlo, Monaco, Consolas, Courier New, monospace";
-
-        if (this.me) {
-            ctx.fillText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10);
-            //ctx.strokeText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10)
-            ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).fill();
-            ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).stroke();
-
-        }
-        else {
-            ctx.fillText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
-            //ctx.strokeText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
-            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
-            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
-        }
-    }
-
-    updatePhysics() {
-
-        if (this.me) {
-
-            if (this.keys[87]) {
-                this.ym -= this.speed;
-            }
-            if (this.keys[83]) {
-                this.ym += this.speed;
-            }
-
-            if (this.keys[65]) {
-                this.xm -= this.speed;
-            }
-            if (this.keys[68]) {
-                this.xm += this.speed;
-            }
-
-        }
-
-        // Interpolate movement to provide fluid movement
-        this.y += this.ym;
-        this.x += this.xm;
-
-        this.x = clamp(this.x, 0, game.width);
-        this.y = clamp(this.y, 0, game.height);
-
-        this.ym *= this.friction;
-        this.xm *= this.friction;
-
-    }
-}
-
 // Data sent from server, all according to api.md
-conn.onmessage = function(e) {
+conn.onmessage = function (e) {
     let data = new Int16Array(e.data);
 
     switch (data[0]) {
         case 1:
             game.ping = Date.now() - game.lastPing
-            app._data.ping = game.ping
+            document.getElementById("rawping").innerText=game.ping;
             createScoreboard();
             break;
         case 100:
@@ -211,9 +135,198 @@ conn.onmessage = function(e) {
             break;
 
     }
+    if (!running){
+        window.requestAnimationFrame(drawGame);
+        running = true;
+    }
 }
 
-CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+/* Classes */
+
+class marker {
+    constructor(x, y, ownerid) {
+        this.x = x;
+        this.y = y;
+        this.ownerid = ownerid;
+        this.render = false;
+        this.width = 25;
+        this.height = 25;
+    }
+
+    draw(playerX, playerY) {
+        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
+        ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
+    }
+
+}
+
+
+class player {
+    constructor(id, x, y, xm, ym, r, g, b, points, u1, u2) {
+        this.x = x;
+        this.y = y;
+        this.xm = 0;
+        this.ym = 0;
+        this.height = 50;
+        this.width = 50;
+        this.id = id;
+        this.color = rgbToHex(r, g, b);
+        this.speed = game.speed;
+        this.friction = game.friction;
+        this.keys = [];
+        this.show = true;
+        this.me = id == game.myID;
+        this.markers = [];
+        this.points = points;
+        this.username = nameList[u1] + nameList[u2];
+    }
+
+    render(playerX, playerY) {
+
+        if (!this.show){
+            return;
+        }
+
+        ctx.fillStyle = this.color;
+        ctx.lineWidth = 5;
+        ctx.textAlign = "center";
+        ctx.font = "20px Menlo, Monaco, Consolas, Courier New, monospace";
+
+        if (this.me) {
+            ctx.fillText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10);
+            //ctx.strokeText(this.username, (c.width / 2) - (this.width / 2) + this.width / 2, (c.height / 2) - (this.height / 2) - 10)
+            ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).fill();
+            ctx.roundRect((c.width / 2) - (this.width / 2), (c.height / 2) - (this.height / 2), this.width, this.height, 15).stroke();
+
+        } else {
+            ctx.fillText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
+            //ctx.strokeText(this.username, this.x + playerX + this.width / 2, this.y + playerY - 10);
+            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).fill();
+            ctx.roundRect(this.x + playerX, this.y + playerY, this.width, this.height, 15).stroke();
+        }
+    }
+
+    updatePhysics() {
+
+        if (this.me) {
+
+            if (this.keys[87]) {
+                this.ym -= this.speed;
+            }
+            if (this.keys[83]) {
+                this.ym += this.speed;
+            }
+
+            if (this.keys[65]) {
+                this.xm -= this.speed;
+            }
+            if (this.keys[68]) {
+                this.xm += this.speed;
+            }
+
+        }
+
+        // Interpolate movement to provide fluid movement
+        this.y += this.ym;
+        this.x += this.xm;
+
+        this.x = clamp(this.x, 0, game.width);
+        this.y = clamp(this.y, 0, game.height);
+
+        this.ym *= this.friction;
+        this.xm *= this.friction;
+
+    }
+}
+
+/* Game Functions */
+
+
+function drawGame() {
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    let playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
+    let playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
+
+    document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
+
+    ctx.lineWidth = 2.5;
+    ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
+
+    for (let i in game.clients) {
+        game.clients[i].render(playerX, playerY);
+
+        if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
+            let bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)];
+            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
+            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
+        }
+
+        if (game.clients[i].markers[0].render) {
+            game.clients[i].markers[0].draw(playerX, playerY)
+        }
+        if (game.clients[i].markers[1].render) {
+            game.clients[i].markers[1].draw(playerX, playerY)
+        }
+    }
+    window.requestAnimationFrame(drawGame);
+}
+
+function gameTick() {
+    for (let i in game.clients) {
+        game.clients[i].updatePhysics();
+    }
+}
+
+function createScoreboard() {
+    let scoreboard = [];
+
+    for (let i in game.clients) {
+        scoreboard.push([game.clients[i].username, game.clients[i].points]);
+    }
+
+    scoreboard.sort((a, b) => (a[1] > b[1]) ? -1 : 1)
+
+    scoreboard = scoreboard.slice(0, 5);
+
+    scoreboardElm.innerHTML= "<tr><th>Username</th><th>Points</th></tr>";
+
+    for (let i in scoreboard){
+        scoreboardElm.innerHTML+="<tr><td>"+ scoreboard[i][0] +"</td><td>"+ scoreboard[i][1] +"</td></tr>"
+    }
+
+}
+
+function handleKey(keyCode, state) {
+    let remap = {
+        38: 87,
+        37: 65,
+        40: 83,
+        39: 68
+    }
+    let keys = [87, 68, 65, 83];
+    
+    if (remap[keyCode]){
+        keyCode = remap[keyCode];
+    }
+
+    if (keys.indexOf(keyCode) != -1) {
+        conn.send(new Int16Array([200, keyCode, state]));
+    }
+
+    if (game.ping < 100) {
+        game.clients[game.myID].keys[keyCode] = state;
+    } else {
+        setTimeout(function () {
+                game.clients[game.myID].keys[keyCode] = state;
+            },
+            game.ping);
+    }
+}
+
+/* Normal Functions */
+
+CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
     if (w < 2 * r) r = w / 2;
     if (h < 2 * r) r = h / 2;
     this.beginPath();
@@ -233,49 +346,6 @@ function rgbToHex(r, g, b) {
 function clamp(val, min, max) {
     return val > max ? max : val < min ? min : val;
 }
-
-function createScoreboard() {
-    let scoreboard = [];
-
-    for (let i in game.clients) {
-        scoreboard.push([game.clients[i].username, game.clients[i].points]);
-    }
-
-    scoreboard.sort((a, b) => (a[1] > b[1]) ? -1 : 1)
-
-    scoreboard = scoreboard.slice(0, 5);
-
-    app._data.scoreboard = scoreboard;
-}
-
-function handleKey(keyCode, state) {
-    let keys = [87, 68, 65, 83];
-
-    if (keys.indexOf(keyCode) != -1) {
-        conn.send(new Int16Array([200, keyCode, state]));
-    }
-
-    if (game.ping < 100) {
-        game.clients[game.myID].keys[keyCode] = state;
-    }
-    else {
-        setTimeout(function() {
-                game.clients[game.myID].keys[keyCode] = state;
-            },
-            game.ping);
-    }
-}
-
-let app = new Vue({
-    el: '#app',
-    data: {
-        ping: null,
-        scoreboard: [
-
-        ]
-    }
-})
-
 
 // nameList taken from https://codepen.io/jamesrbdev/pen/WxyKyr
 let nameList = [
@@ -301,39 +371,3 @@ let nameList = [
     'Slash', 'Melt', 'Melted', 'Melting', 'Fell', 'Wolf', 'Hound',
     'Legacy', 'Sharp', 'Dead', 'Mew', 'Chuckle', 'Bubba', 'Bubble', 'Sandwich', 'Smasher', 'Extreme', 'Multi', 'Universe', 'Ultimate', 'Death', 'Ready', 'Monkey', 'Elevator', 'Wrench', 'Grease', 'Head', 'Theme', 'Grand', 'Cool', 'Kid', 'Boy', 'Girl', 'Vortex', 'Paradox'
 ];
-
-function drawGame() {
-    ctx.clearRect(0, 0, c.width, c.height);
-
-    let playerX = (-game.clients[game.myID].x + (c.width / 2) - (25));
-    let playerY = (-game.clients[game.myID].y + (c.height / 2) - (25));
-
-    document.getElementById("canvas").style.backgroundPosition = playerX % 50 + "px " + playerY % 50 + "px";
-
-    ctx.lineWidth = 2.5;
-    ctx.roundRect(-1 + playerX, -1 + playerY, game.width + 52, game.height + 52, 10).stroke();
-
-    for (let i in game.clients) {
-        game.clients[i].updatePhysics();
-        game.clients[i].render(playerX, playerY);
-
-        if (game.clients[i].markers[1].render && game.clients[i].markers[0].render) {
-            let bounds = [Math.min(game.clients[i].markers[0].x, game.clients[i].markers[1].x), Math.min(game.clients[i].markers[0].y, game.clients[i].markers[1].y)];
-            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).fill()
-            ctx.roundRect(bounds[0] + playerX, bounds[1] + playerY, Math.max(game.clients[i].markers[0].x, game.clients[i].markers[1].x) - bounds[0] + 25, Math.max(game.clients[i].markers[0].y, game.clients[i].markers[1].y) - bounds[1] + 25, 15).stroke()
-        }
-
-        if (game.clients[i].markers[0].render) {
-            game.clients[i].markers[0].draw(playerX, playerY)
-        }
-        if (game.clients[i].markers[1].render) {
-            game.clients[i].markers[1].draw(playerX, playerY)
-        }
-    }
-}
-
-document.getElementById("start").onclick = function() {
-    conn.send(new Int16Array([202]));
-    document.getElementById("login").style.display = "none";
-    document.getElementById("scoreboard").style.display = "block";
-}
