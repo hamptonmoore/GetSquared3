@@ -23,7 +23,16 @@ let game = {
 /* Start Screen */
 
 if (new URLSearchParams(window.location.search).get("server")) {
-    document.getElementById("serverSelect").value = new URLSearchParams(window.location.search).get("server");
+    var server = new URLSearchParams(window.location.search).get("server");
+    document.getElementById("serverSelect").value = server;
+
+    if (document.getElementById("serverSelect").value == ""){
+        var newOption = document.createElement("option");
+        newOption.text = server;
+        newOption.value = server;
+        document.getElementById("serverSelect").add(newOption);
+        document.getElementById("serverSelect").value = server;
+    }
 }
 
 document.getElementById("serverSelect").onchange = function () {
