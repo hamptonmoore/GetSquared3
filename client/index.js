@@ -10,6 +10,7 @@ let scoreboardElm = document.getElementById("scoreboard");
 let game = {
     myID: null,
     clients: [],
+    keys: [],
     speed: null,
     friction: null,
     width: null,
@@ -33,6 +34,73 @@ document.getElementById("start").onclick = function () {
     conn.send(new Int16Array([202]));
     document.getElementById("login").style.display = "none";
     document.getElementById("scoreboard").style.display = "block";
+
+    if ((typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1)){
+        document.getElementById("gamepad").style.display = "";
+    }
+
+    c.onclick = function(){
+        conn.send(new Int16Array([201, 32]));
+    }
+}
+
+/* Mobile Gamepad */
+
+document.getElementById("gpW").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, true); // W
+    handleKey(65, false) // A
+    handleKey(68, false) // D
+}
+
+document.getElementById("gpWA").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, true); // W
+    handleKey(65, true) // A
+    handleKey(68, false) // D
+}
+document.getElementById("gpWD").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, true); // W
+    handleKey(65, false) // A
+    handleKey(68, true) // D
+}
+document.getElementById("gpA").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, false); // W
+    handleKey(65, true) // A
+    handleKey(68, false) // D
+}
+document.getElementById("gpD").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, false); // W
+    handleKey(65, false) // A
+    handleKey(68, true) // D
+}
+document.getElementById("gpS").onclick = function(){
+    handleKey(83, true); // S
+    handleKey(87, false); // W
+    handleKey(65, false) // A
+    handleKey(68, false) // D
+}
+document.getElementById("gpSA").onclick = function(){
+    handleKey(83, true); // S
+    handleKey(87, false); // W
+    handleKey(65, true) // A
+    handleKey(68, false) // D
+}
+document.getElementById("gpSD").onclick = function(){
+    handleKey(83, true); // S
+    handleKey(87, false); // W
+    handleKey(65, false) // A
+    handleKey(68, true) // D
+}
+
+document.getElementById("gpNone").onclick = function(){
+    handleKey(83, false); // S
+    handleKey(87, false); // W
+    handleKey(65, false) // A
+    handleKey(68, false) // D
 }
 
 /* Setup Socket */
@@ -309,6 +377,8 @@ function handleKey(keyCode, state) {
     if (remap[keyCode]){
         keyCode = remap[keyCode];
     }
+
+    game.keys[keyCode] = state;
 
     if (keys.indexOf(keyCode) != -1) {
         conn.send(new Int16Array([200, keyCode, state]));

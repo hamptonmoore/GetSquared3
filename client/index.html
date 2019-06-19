@@ -45,25 +45,25 @@
 			transform: translate(-50%, -50%);
 			text-align: center;
 		}
-		
+
 		#login>h1 {
 			font-size: 5em;
 			-webkit-text-stroke: 1px black;
-			
+
 			/* If we weren't using text-shadow, we'd set a fallback color
 				and use this to set color instead
 				-webkit-text-fill-color: white; */
-			
+
 			color: white;
-			
+
 			text-shadow:
 				3px 3px 0 #000,
 				/* Simulated effect for Firefox and Opera
 				and nice enhancement for WebKit */
-			-1px -1px 0 #000,  
+				-1px -1px 0 #000,
 				1px -1px 0 #000,
-			-1px  1px 0 #000,
-				1px  1px 0 #000;
+				-1px 1px 0 #000,
+				1px 1px 0 #000;
 		}
 
 		.btn {
@@ -179,6 +179,30 @@
 			border-radius: .25rem;
 			transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
 		}
+
+		.gamepad {
+			position:absolute;
+			bottom:10px;
+			left: 10px;
+			width: 100%;
+			height: 100%;
+			max-width: 300px;
+			max-height: 300px;
+			z-index: 100;
+		}
+
+		.gpBtn {
+			background-color: rgba(220, 220, 220, 0.5);
+			width: 32%;
+			height: 32%;
+			float: left;
+			margin-left: 1%;
+			margin-bottom: 1%;
+
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
 	</style>
 	<title>GetSquared</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -195,6 +219,40 @@
 				<th>Points</th>
 			</tr>
 		</table>
+
+		<div class="gamepad" id="gamepad" style="display: none;">
+			<div class="gpBtn" id="gpWA">
+				<p>↖</p>
+			</div>
+			<div class="gpBtn" id="gpW">
+				<p>↑</p>
+			</div>
+			<div class="gpBtn" id="gpWD">
+				<p>↗</p>
+			</div>
+
+			<br>
+
+			<div class="gpBtn" id="gpA">
+				<p>←</p>
+			</div>
+			<div class="gpBtn" id="gpNone">
+				<p></p>
+			</div>
+			<div class="gpBtn" id="gpD">
+				<p>→</p>
+			</div>
+			<br>
+			<div class="gpBtn" id="gpSA">
+				<p>↙</p>
+			</div>
+			<div class="gpBtn" id="gpS">
+				<p>↓</p>
+			</div>
+			<div class="gpBtn" id="gpSD">
+				<p>↘</p>
+			</div>
+		</div>
 	</div>
 	<div id="login">
 		<h1>Get Squared</h1>
@@ -209,7 +267,7 @@
 
 		<button id="start" class="btn btn-primary btn-lg btn-block">Start</button>
 	</div>
-	<script type="text/javascript" src="./index.js?v=jun/19/2019/1156"></script>
+	<script type="text/javascript" src="./index.js?v=jun/19/2019/1251"></script>
 </body>
 
 </html>
