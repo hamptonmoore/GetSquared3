@@ -136,8 +136,6 @@ conn.onopen = function (event) {
         if (keys.indexOf(e.keyCode) != -1) {
             conn.send(new Int16Array([201, e.keyCode]));
         }
-
-
     };
 
     game.lastPing = Date.now()
@@ -366,10 +364,16 @@ function createScoreboard() {
 
     scoreboard = scoreboard.slice(0, 5);
 
-    scoreboardElm.innerHTML= "<tr><th>Username</th><th>Points</th></tr>";
+    let newTable = "<tr><th>Username</th><th>Points</th></tr>"
 
     for (let i in scoreboard){
-        scoreboardElm.innerHTML+="<tr><td>"+ scoreboard[i][0] +"</td><td>"+ scoreboard[i][1] +"</td></tr>"
+        newTable+="<tr><td>"+ scoreboard[i][0] +"</td><td>"+ scoreboard[i][1] +"</td></tr>"
+    }
+
+    if (scoreboardElm.innerHTML != newTable){
+        scoreboardElm.innerHTML = newTable;
+    } else {
+        console.log("No Change");
     }
 
 }
