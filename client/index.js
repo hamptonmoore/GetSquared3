@@ -114,7 +114,7 @@ document.getElementById("gpNone").onclick = function(){
 
 /* Setup Socket */
 
-let conn = new WebSocket(new URLSearchParams(window.location.search).get("server") || "wss://getsquared.voyager1.hampton.pw/");
+let conn = new WebSocket(new URLSearchParams(window.location.search).get("server") || "wss://diamond.getsquared.hampton.pw/");
 conn.binaryType = "arraybuffer";
 
 conn.onopen = function (event) {
